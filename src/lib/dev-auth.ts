@@ -6,12 +6,13 @@
  *   AUTH_MODE = "clerk"  → Clerk-hosted auth (set the Clerk env keys).
  *
  * Controlled by NEXT_PUBLIC_AUTH_MODE so both server and client code can read
- * it. Defaults to "clerk" for production safety.
+ * it. Defaults to "local" (real username/password auth). Set
+ * NEXT_PUBLIC_AUTH_MODE=clerk (and the Clerk keys) to use Clerk instead.
  */
 export type AuthMode = "local" | "clerk";
 
 export const AUTH_MODE: AuthMode =
-  process.env.NEXT_PUBLIC_AUTH_MODE === "local" ? "local" : "clerk";
+  process.env.NEXT_PUBLIC_AUTH_MODE === "clerk" ? "clerk" : "local";
 
 export const IS_LOCAL_AUTH = AUTH_MODE === "local";
 export const IS_CLERK_AUTH = AUTH_MODE === "clerk";
