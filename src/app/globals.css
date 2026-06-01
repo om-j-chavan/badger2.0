@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 33% 98%;
+    --foreground: 240 10% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 12%;
+
+    /* Badger brand: warm, friendly green */
+    --primary: 158 64% 38%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 30% 94%;
+    --secondary-foreground: 240 10% 18%;
+
+    --muted: 40 20% 94%;
+    --muted-foreground: 240 4% 46%;
+
+    --accent: 40 40% 92%;
+    --accent-foreground: 240 10% 18%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 158 64% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 40 15% 88%;
+    --input: 40 15% 88%;
+    --ring: 158 64% 38%;
+
+    --radius: 0.85rem;
+  }
+
+  .dark {
+    --background: 240 10% 8%;
+    --foreground: 40 20% 96%;
+
+    --card: 240 9% 11%;
+    --card-foreground: 40 20% 96%;
+
+    --popover: 240 9% 11%;
+    --popover-foreground: 40 20% 96%;
+
+    --primary: 158 58% 46%;
+    --primary-foreground: 240 10% 8%;
+
+    --secondary: 240 6% 18%;
+    --secondary-foreground: 40 20% 96%;
+
+    --muted: 240 6% 16%;
+    --muted-foreground: 240 5% 65%;
+
+    --accent: 240 6% 18%;
+    --accent-foreground: 40 20% 96%;
+
+    --destructive: 0 62% 46%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 158 58% 46%;
+    --success-foreground: 240 10% 8%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 240 10% 8%;
+
+    --border: 240 6% 20%;
+    --input: 240 6% 20%;
+    --ring: 158 58% 46%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  /* Safe-area padding for mobile bottom nav */
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem);
+  }
+}

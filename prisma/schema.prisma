@@ -1,0 +1,563 @@
+// Badger – Prisma schema
+// Database: Neon PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // The Vercel/Neon integration injects these names automatically in prod.
+  // Locally, .env maps them to your local Postgres (see .env.example).
+  url       = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum AccountType {
+  CASH
+  BANK
+  SAVINGS
+  CREDIT_CARD
+  UPI
+  INVESTMENT
+  WALLET
+  OTHER
+}
+
+enum Importance {
+  ESSENTIAL
+  USEFUL
+  LUXURY
+  INVESTMENT
+}
+
+enum Mood {
+  GREAT
+  GOOD
+  NEUTRAL
+  REGRET
+  STRESSED
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+  CUSTOM
+}
+
+enum SubscriptionFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+enum LoanType {
+  PERSONAL
+  VEHICLE
+  HOME
+  EDUCATION
+  OTHER
+}
+
+enum LoanStatus {
+  ACTIVE
+  CLOSED
+  DEFAULTED
+}
+
+enum CommitmentType {
+  LOAN
+  SUBSCRIPTION
+  DISTRIBUTED_EXPENSE
+  INSURANCE
+  MEMBERSHIP
+}
+
+enum CommitmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum BudgetPriority {
+  MUST_HAVE
+  SHOULD_HAVE
+  NICE_TO_HAVE
+}
+
+enum GoalStatus {
+  ACTIVE
+  ACHIEVED
+  ABANDONED
+}
+
+enum InsuranceType {
+  HEALTH
+  LIFE
+  VEHICLE
+  HOME
+  TRAVEL
+  OTHER
+}
+
+// ---------------------------------------------------------------------------
+// Core: User
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  // clerkId is used in Clerk auth mode; null for locally-registered users.
+  clerkId      String?  @unique
+  // username + passwordHash are used in local auth mode.
+  username     String?  @unique
+  passwordHash String?
+  email        String   @unique
+  name         String?
+  avatar       String?
+  currency     String   @default("INR")
+  timezone     String   @default("Asia/Kolkata")
+  monthlyIncome Decimal? @db.Decimal(14, 2)
+  onboardedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  accounts          Account[]
+  categories        Category[]
+  expenses          Expense[]
+  recurringExpenses RecurringExpense[]
+  distributedExpenses DistributedExpense[]
+  subscriptions     Subscription[]
+  loans             Loan[]
+  insurances        Insurance[]
+  memberships       Membership[]
+  budgets           Budget[]
+  goals             Goal[]
+  goalContributions GoalContribution[]
+  loanPayments      LoanPayment[]
+  badges            UserBadge[]
+  streaks           Streak[]
+  gamification      Gamification?
+  auditLogs         AuditLog[]
+  aiMessages        AiMessage[]
+  sessions          Session[]
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+// Local-auth session (cookie-backed). Unused in Clerk mode.
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Accounts / Wallets
+// ---------------------------------------------------------------------------
+
+model Account {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  type           AccountType @default(BANK)
+  currentBalance Decimal     @db.Decimal(14, 2) @default(0)
+  color          String      @default("#10b981")
+  icon           String      @default("wallet")
+  isArchived     Boolean     @default(false)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  expenses Expense[]
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Categories
+// ---------------------------------------------------------------------------
+
+model Category {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  icon      String   @default("circle")
+  color     String   @default("#64748b")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  expenses            Expense[]
+  recurringExpenses   RecurringExpense[]
+  distributedExpenses DistributedExpense[]
+  subscriptions       Subscription[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Expenses
+// ---------------------------------------------------------------------------
+
+model Expense {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId     String?
+  account       Account?    @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+  date          DateTime
+  amount        Decimal     @db.Decimal(14, 2)
+  importance    Importance  @default(USEFUL)
+  note          String?
+  mood          Mood?
+  paymentMethod String?
+  // Provenance links (an expense may be an instance of a recurring/distributed item)
+  recurringExpenseId   String?
+  recurringExpense     RecurringExpense?   @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+  distributedExpenseId String?
+  distributedExpense   DistributedExpense? @relation(fields: [distributedExpenseId], references: [id], onDelete: SetNull)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([userId, date])
+  @@index([userId, categoryId])
+  @@index([accountId])
+  @@index([recurringExpenseId])
+  @@index([distributedExpenseId])
+}
+
+// ---------------------------------------------------------------------------
+// Recurring expenses
+// ---------------------------------------------------------------------------
+
+model RecurringExpense {
+  id            String              @id @default(cuid())
+  userId        String
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId    String
+  category      Category            @relation(fields: [categoryId], references: [id])
+  name          String
+  amount        Decimal             @db.Decimal(14, 2)
+  importance    Importance          @default(USEFUL)
+  frequency     RecurrenceFrequency @default(MONTHLY)
+  intervalCount Int                 @default(1) // for CUSTOM: every N days
+  startDate     DateTime
+  endDate       DateTime?
+  nextRunDate   DateTime
+  lastRunDate   DateTime?
+  isActive      Boolean             @default(true)
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  generatedExpenses Expense[]
+
+  @@index([userId])
+  @@index([nextRunDate])
+}
+
+// ---------------------------------------------------------------------------
+// Distributed expenses (cost spread across coverage months)
+// ---------------------------------------------------------------------------
+
+model DistributedExpense {
+  id             String     @id @default(cuid())
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId     String
+  category       Category   @relation(fields: [categoryId], references: [id])
+  name           String
+  totalAmount    Decimal    @db.Decimal(14, 2)
+  coverageMonths Int
+  startDate      DateTime
+  importance     Importance @default(ESSENTIAL)
+  note           String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  expenses Expense[]
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Subscriptions
+// ---------------------------------------------------------------------------
+
+model Subscription {
+  id          String                @id @default(cuid())
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category?             @relation(fields: [categoryId], references: [id])
+  name        String
+  cost        Decimal               @db.Decimal(14, 2)
+  frequency   SubscriptionFrequency @default(MONTHLY)
+  renewalDate DateTime
+  icon        String                @default("repeat")
+  color       String                @default("#6366f1")
+  isActive    Boolean               @default(true)
+  remindDaysBefore Int              @default(3)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([userId])
+  @@index([renewalDate])
+}
+
+// ---------------------------------------------------------------------------
+// Loans
+// ---------------------------------------------------------------------------
+
+model Loan {
+  id                 String     @id @default(cuid())
+  userId             String
+  user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  lender             String?
+  type               LoanType   @default(PERSONAL)
+  principalAmount    Decimal    @db.Decimal(14, 2)
+  interestRate       Decimal    @db.Decimal(6, 3) // annual %, e.g. 10.500
+  tenureMonths       Int
+  startDate          DateTime
+  emiAmount          Decimal    @db.Decimal(14, 2)
+  remainingPrincipal Decimal    @db.Decimal(14, 2)
+  nextDueDate        DateTime
+  status             LoanStatus @default(ACTIVE)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  payments LoanPayment[]
+
+  @@index([userId])
+}
+
+model LoanPayment {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loanId        String
+  loan          Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  date          DateTime
+  amount        Decimal  @db.Decimal(14, 2)
+  principalPart Decimal  @db.Decimal(14, 2)
+  interestPart  Decimal  @db.Decimal(14, 2)
+  isPrepayment  Boolean  @default(false)
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@index([loanId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Insurance & Memberships (commitment sources)
+// ---------------------------------------------------------------------------
+
+model Insurance {
+  id            String                @id @default(cuid())
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  type          InsuranceType         @default(HEALTH)
+  premium       Decimal               @db.Decimal(14, 2)
+  frequency     SubscriptionFrequency @default(YEARLY)
+  coverageAmount Decimal?             @db.Decimal(14, 2)
+  renewalDate   DateTime
+  provider      String?
+  isActive      Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([userId])
+}
+
+model Membership {
+  id          String                @id @default(cuid())
+  userId      String
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  cost        Decimal               @db.Decimal(14, 2)
+  frequency   SubscriptionFrequency @default(YEARLY)
+  renewalDate DateTime
+  isActive    Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Budget planner
+// ---------------------------------------------------------------------------
+
+model Budget {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  month         Int // 1-12
+  year          Int
+  monthlyIncome Decimal  @db.Decimal(14, 2)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items BudgetItem[]
+
+  @@unique([userId, month, year])
+  @@index([userId])
+}
+
+model BudgetItem {
+  id         String         @id @default(cuid())
+  budgetId   String
+  budget     Budget         @relation(fields: [budgetId], references: [id], onDelete: Cascade)
+  label      String
+  amount     Decimal        @db.Decimal(14, 2)
+  priority   BudgetPriority @default(SHOULD_HAVE)
+  categoryId String?
+  createdAt  DateTime       @default(now())
+
+  @@index([budgetId])
+}
+
+// ---------------------------------------------------------------------------
+// Goals
+// ---------------------------------------------------------------------------
+
+model Goal {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  icon          String     @default("target")
+  color         String     @default("#10b981")
+  targetAmount  Decimal    @db.Decimal(14, 2)
+  currentAmount Decimal    @db.Decimal(14, 2) @default(0)
+  targetDate    DateTime?
+  status        GoalStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  contributions GoalContribution[]
+
+  @@index([userId])
+}
+
+model GoalContribution {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goalId    String
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  amount    Decimal  @db.Decimal(14, 2)
+  date      DateTime @default(now())
+  note      String?
+
+  @@index([goalId])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Gamification
+// ---------------------------------------------------------------------------
+
+model Gamification {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  xp        Int      @default(0)
+  level     Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Badge {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String
+  icon        String   @default("award")
+  createdAt   DateTime @default(now())
+
+  awardedTo UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId   String
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  awardedAt DateTime @default(now())
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+}
+
+model Streak {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind        String // "daily_logging" | "budget_adherence" | "savings"
+  current     Int      @default(0)
+  longest     Int      @default(0)
+  lastDate    DateTime?
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, kind])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// AI assistant transcript
+// ---------------------------------------------------------------------------
+
+model AiMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String // "user" | "assistant"
+  content   String
+  meta      Json? // tool calls, links, draft actions
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String // e.g. "expense.create"
+  entity    String // e.g. "Expense"
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}

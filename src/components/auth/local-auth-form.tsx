@@ -1,0 +1,105 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useAction } from "@/hooks/use-action";
+import { signInLocal, signUpLocal } from "@/app/actions/auth-local";
+
+export function LocalAuthForm({ mode }: { mode: "signin" | "signup" }) {
+  const { run, pending, fieldErrors } = useAction();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const isSignUp = mode === "signup";
+
+  const [identifier, setIdentifier] = React.useState("");
+  const [username, setUsername] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [name, setName] = React.useState("");
+  const [password, setPassword] = React.useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (isSignUp) {
+      const res = await run(() => signUpLocal({ username, email, name, password }), {
+        successMessage: "Welcome to Badger!",
+      });
+      if (res.ok) router.push("/onboarding");
+    } else {
+      const res = await run(() => signInLocal({ identifier, password }), {
+        successMessage: "Welcome back!",
+      });
+      if (res.ok) router.push(searchParams.get("redirect_url") || "/dashboard");
+    }
+  }
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardContent className="p-6">
+        <div className="mb-6 text-center">
+          <span className="text-5xl">🦡</span>
+          <h1 className="mt-3 text-2xl font-bold">
+            {isSignUp ? "Create your Badger account" : "Welcome back"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {isSignUp ? "Takes a few seconds — no email needed to verify." : "Sign in to your money companion."}
+          </p>
+        </div>
+
+        <form onSubmit={submit} className="space-y-4">
+          {isSignUp ? (
+            <>
+              <Field label="Username" error={fieldErrors.username?.[0]}>
+                <Input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="moneybadger" autoComplete="username" required />
+              </Field>
+              <Field label="Email" error={fieldErrors.email?.[0]}>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" required />
+              </Field>
+              <Field label="Name (optional)">
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" autoComplete="name" />
+              </Field>
+              <Field label="Password" error={fieldErrors.password?.[0]}>
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" required />
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field label="Username or email">
+                <Input value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="moneybadger" autoComplete="username" required />
+              </Field>
+              <Field label="Password">
+                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+              </Field>
+            </>
+          )}
+
+          <Button type="submit" className="w-full" disabled={pending}>
+            {pending ? "Please wait…" : isSignUp ? "Create account" : "Sign in"}
+          </Button>
+        </form>
+
+        <p className="mt-5 text-center text-sm text-muted-foreground">
+          {isSignUp ? (
+            <>Already have an account? <Link href="/sign-in" className="font-medium text-primary hover:underline">Sign in</Link></>
+          ) : (
+            <>New here? <Link href="/sign-up" className="font-medium text-primary hover:underline">Create an account</Link></>
+          )}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      {children}
+      {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
