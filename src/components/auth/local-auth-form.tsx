@@ -3,10 +3,12 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { useAction } from "@/hooks/use-action";
 import { signInLocal, signUpLocal } from "@/app/actions/auth-local";
 
@@ -63,7 +65,7 @@ export function LocalAuthForm({ mode }: { mode: "signin" | "signup" }) {
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" autoComplete="name" />
               </Field>
               <Field label="Password" error={fieldErrors.password?.[0]}>
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" autoComplete="new-password" required />
+                <PasswordInput value={password} onChange={setPassword} placeholder="Your password" autoComplete="new-password" />
               </Field>
             </>
           ) : (
@@ -72,7 +74,7 @@ export function LocalAuthForm({ mode }: { mode: "signin" | "signup" }) {
                 <Input value={identifier} onChange={(e) => setIdentifier(e.target.value)} placeholder="moneybadger" autoComplete="username" required />
               </Field>
               <Field label="Password">
-                <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
+                <PasswordInput value={password} onChange={setPassword} autoComplete="current-password" />
               </Field>
             </>
           )}
@@ -91,6 +93,42 @@ export function LocalAuthForm({ mode }: { mode: "signin" | "signup" }) {
         </p>
       </CardContent>
     </Card>
+  );
+}
+
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  autoComplete?: string;
+}) {
+  const [show, setShow] = React.useState(false);
+  return (
+    <div className="relative">
+      <Input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        className={cn("pr-10")}
+        required
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        className="absolute right-0 top-0 flex h-10 w-10 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+        aria-label={show ? "Hide password" : "Show password"}
+        tabIndex={-1}
+      >
+        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
   );
 }
 

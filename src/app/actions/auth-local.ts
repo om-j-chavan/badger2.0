@@ -21,12 +21,12 @@ const signUpSchema = z.object({
   username: z
     .string()
     .trim()
-    .min(3, "At least 3 characters")
+    .min(1, "Enter a username")
     .max(30)
     .regex(/^[a-zA-Z0-9_.-]+$/, "Letters, numbers, . _ - only"),
   email: z.string().trim().email("Enter a valid email"),
   name: z.string().trim().max(80).optional(),
-  password: z.string().min(8, "At least 8 characters").max(200),
+  password: z.string().min(1, "Enter a password").max(200),
 });
 
 const signInSchema = z.object({
