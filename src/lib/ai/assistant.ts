@@ -129,6 +129,23 @@ function deterministicAnswer(message: string, context: string, _currency: string
   const get = (label: string) =>
     context.split("\n").find((l) => l.toLowerCase().startsWith(label.toLowerCase())) ?? "";
 
+  // Greetings
+  if (/^(hi|hey+|hello|yo|sup|hola|namaste|good (morning|afternoon|evening))\b/.test(q)) {
+    return `Hey there! 👋 I'm Badger AI, your money companion. I can answer questions about your finances, add things for you in plain English, search your data, and help you find your way around. What would you like to do?`;
+  }
+
+  // Capabilities / help
+  if (/what can you do|what do you do|how (do|can) you (help|work)|help me|capabilities|who are you/.test(q)) {
+    return [
+      `Here's what I can do:`,
+      `• **Add things in plain English** — "spent 500 on fuel today", "add Netflix 649 monthly", "create a 2 lakh loan at 10% for 3 years" (I'll show a draft to confirm).`,
+      `• **Answer money questions** — "can I afford a PS5?", "am I spending too much on food?", "how much am I saving?".`,
+      `• **Search your data** — "show all food expenses", "show my subscriptions", "show my loans".`,
+      `• **Help you navigate** — "where's the budget planner?", "how do I add a goal?".`,
+      `Try one and see! 🦡`,
+    ].join("\n");
+  }
+
   if (/can i afford|should i buy|afford/.test(q)) {
     return `Affordability comes down to your buffer. ${get("Savings:")}. If a purchase fits within a couple of months of savings without touching your goals or commitments (${get("Total commitments:")}), it's likely comfortable. Want me to set it up as a goal instead?`;
   }
