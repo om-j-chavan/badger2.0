@@ -30,6 +30,7 @@ export default async function DistributedPage() {
           id: d.id,
           name: d.name,
           totalAmount: toNumber(d.totalAmount),
+          amountPaid: toNumber(d.amountPaid),
           coverageMonths: d.coverageMonths,
           monthlyImpact: distributedMonthlyImpact(toNumber(d.totalAmount), d.coverageMonths),
           startDate: d.startDate.toISOString(),

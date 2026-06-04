@@ -67,15 +67,22 @@ export const recurringSchema = z.object({
 });
 
 // --- Distributed ------------------------------------------------------------
-export const distributedSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  categoryId: z.string().cuid(),
-  totalAmount: money,
-  coverageMonths: z.coerce.number().int().min(1).max(120),
-  startDate: isoDate,
-  importance: importanceEnum.default("ESSENTIAL"),
-  note: z.string().trim().max(280).optional().nullable(),
-});
+export const distributedSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    categoryId: z.string().cuid(),
+    totalAmount: money,
+    // How much of the total has already been paid (logged as actual spend).
+    amountPaid: optionalMoney.default(0),
+    coverageMonths: z.coerce.number().int().min(1).max(120),
+    startDate: isoDate,
+    importance: importanceEnum.default("ESSENTIAL"),
+    note: z.string().trim().max(280).optional().nullable(),
+  })
+  .refine((d) => d.amountPaid <= d.totalAmount, {
+    message: "Already paid can't exceed the total",
+    path: ["amountPaid"],
+  });
 
 // --- Subscriptions ----------------------------------------------------------
 export const subscriptionSchema = z.object({
@@ -90,17 +97,24 @@ export const subscriptionSchema = z.object({
 });
 
 // --- Loans ------------------------------------------------------------------
-export const loanSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  lender: z.string().trim().max(80).optional().nullable(),
-  type: loanTypeEnum.default("PERSONAL"),
-  principalAmount: money,
-  interestRate: z.coerce.number().min(0).max(100),
-  tenureMonths: z.coerce.number().int().min(1).max(600),
-  startDate: isoDate,
-  // emiAmount is computed server-side but can be overridden for odd schedules.
-  emiAmount: optionalMoney.optional(),
-});
+export const loanSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    lender: z.string().trim().max(80).optional().nullable(),
+    type: loanTypeEnum.default("PERSONAL"),
+    principalAmount: money,
+    interestRate: z.coerce.number().min(0).max(100),
+    tenureMonths: z.coerce.number().int().min(1).max(600),
+    startDate: isoDate,
+    // emiAmount is computed server-side but can be overridden for odd schedules.
+    emiAmount: optionalMoney.optional(),
+    // Principal already repaid (for loans you're partway through).
+    amountPaid: optionalMoney.default(0),
+  })
+  .refine((d) => d.amountPaid <= d.principalAmount, {
+    message: "Already paid can't exceed the principal",
+    path: ["amountPaid"],
+  });
 
 export const loanPaymentSchema = z.object({
   loanId: z.string().cuid(),

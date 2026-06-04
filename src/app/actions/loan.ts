@@ -27,6 +27,11 @@ export async function createLoan(input: unknown): Promise<ActionResult<{ id: str
         ? data.emiAmount
         : calculateEmi(data.principalAmount, data.interestRate, data.tenureMonths);
 
+    // Outstanding balance = principal minus whatever has already been repaid,
+    // so loans you're partway through are tracked accurately from day one.
+    const remaining = Math.max(0, data.principalAmount - (data.amountPaid ?? 0));
+    const fullyPaid = remaining <= 0.5;
+
     const loan = await prisma.loan.create({
       data: {
         userId,
@@ -38,9 +43,9 @@ export async function createLoan(input: unknown): Promise<ActionResult<{ id: str
         tenureMonths: data.tenureMonths,
         startDate: data.startDate,
         emiAmount: emi,
-        remainingPrincipal: data.principalAmount,
+        remainingPrincipal: remaining,
         nextDueDate: addMonths(data.startDate, 1),
-        status: "ACTIVE",
+        status: fullyPaid ? "CLOSED" : "ACTIVE",
       },
     });
     await audit(userId, "loan.create", "Loan", loan.id, { principal: data.principalAmount });

@@ -31,6 +31,7 @@ export async function createDistributed(input: unknown): Promise<ActionResult<{ 
           categoryId: data.categoryId,
           name: data.name,
           totalAmount: data.totalAmount,
+          amountPaid: data.amountPaid,
           coverageMonths: data.coverageMonths,
           startDate: data.startDate,
           importance: data.importance,
@@ -38,17 +39,22 @@ export async function createDistributed(input: unknown): Promise<ActionResult<{ 
         },
       });
 
-      await tx.expense.create({
-        data: {
-          userId,
-          categoryId: data.categoryId,
-          date: data.startDate,
-          amount: data.totalAmount,
-          importance: data.importance,
-          note: `${data.name} (covers ${data.coverageMonths} months)`,
-          distributedExpenseId: created.id,
-        },
-      });
+      // Log the actual money already paid (if any) as a real expense, linked
+      // back to this distributed item. The full cost is still spread across
+      // coverage months for the "effective" view regardless of how much is paid.
+      if (data.amountPaid > 0) {
+        await tx.expense.create({
+          data: {
+            userId,
+            categoryId: data.categoryId,
+            date: data.startDate,
+            amount: data.amountPaid,
+            importance: data.importance,
+            note: `${data.name} (paid ${data.amountPaid} of ${data.totalAmount}, covers ${data.coverageMonths} months)`,
+            distributedExpenseId: created.id,
+          },
+        });
+      }
 
       await audit(userId, "distributed.create", "DistributedExpense", created.id, undefined, tx);
       return created;

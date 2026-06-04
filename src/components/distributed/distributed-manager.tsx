@@ -20,6 +20,7 @@ interface Item {
   id: string;
   name: string;
   totalAmount: number;
+  amountPaid: number;
   coverageMonths: number;
   monthlyImpact: number;
   startDate: string;
@@ -47,12 +48,14 @@ export function DistributedManager({
 
   const [name, setName] = React.useState("");
   const [total, setTotal] = React.useState("");
+  const [paid, setPaid] = React.useState("");
   const [months, setMonths] = React.useState("6");
   const [categoryId, setCategoryId] = React.useState(categories[0]?.id ?? "");
   const [startDate, setStartDate] = React.useState(format(new Date(), "yyyy-MM-dd"));
 
   const previewMonthly =
     Number(total) > 0 && Number(months) > 0 ? Number(total) / Number(months) : 0;
+  const previewRemaining = Math.max(0, (Number(total) || 0) - (Number(paid) || 0));
 
   function close(v: boolean) {
     setOpen(v);
@@ -66,6 +69,7 @@ export function DistributedManager({
         createDistributed({
           name,
           totalAmount: Number(total),
+          amountPaid: Number(paid) || 0,
           coverageMonths: Number(months),
           categoryId,
           startDate: new Date(startDate),
@@ -76,6 +80,7 @@ export function DistributedManager({
           close(false);
           setName("");
           setTotal("");
+          setPaid("");
         },
       },
     );
@@ -100,6 +105,7 @@ export function DistributedManager({
         <div className="grid gap-3 sm:grid-cols-2">
           {items.map((d) => {
             const progress = Math.min(100, (d.monthsElapsed / d.coverageMonths) * 100);
+            const remaining = Math.max(0, d.totalAmount - d.amountPaid);
             return (
               <Card key={d.id}>
                 <CardContent className="p-4">
@@ -131,6 +137,12 @@ export function DistributedManager({
                   <p className="mt-1 text-xs text-muted-foreground">
                     {Math.min(d.monthsElapsed, d.coverageMonths)} of {d.coverageMonths} months elapsed
                   </p>
+                  <div className="mt-2 flex justify-between border-t pt-2 text-xs">
+                    <span className="text-muted-foreground">Paid {formatCurrency(d.amountPaid, currency)}</span>
+                    <span className={remaining > 0 ? "font-medium text-warning" : "font-medium text-success"}>
+                      {remaining > 0 ? `${formatCurrency(remaining, currency)} left to pay` : "Fully paid"}
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -148,20 +160,28 @@ export function DistributedManager({
               <Label htmlFor="d-name">Name</Label>
               <Input id="d-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Internet (6 months)" required />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <Label htmlFor="d-total">Total paid</Label>
+                <Label htmlFor="d-total">Total amount</Label>
                 <Input id="d-total" type="number" step="0.01" value={total} onChange={(e) => setTotal(e.target.value)} required />
                 {fieldErrors.totalAmount && <p className="mt-1 text-xs text-destructive">{fieldErrors.totalAmount[0]}</p>}
               </div>
               <div>
-                <Label htmlFor="d-months">Coverage months</Label>
+                <Label htmlFor="d-paid">Already paid</Label>
+                <Input id="d-paid" type="number" step="0.01" placeholder="0" value={paid} onChange={(e) => setPaid(e.target.value)} />
+                {fieldErrors.amountPaid && <p className="mt-1 text-xs text-destructive">{fieldErrors.amountPaid[0]}</p>}
+              </div>
+              <div>
+                <Label htmlFor="d-months">Coverage</Label>
                 <Input id="d-months" type="number" min="1" value={months} onChange={(e) => setMonths(e.target.value)} required />
               </div>
             </div>
             {previewMonthly > 0 && (
               <div className="rounded-xl bg-primary/10 p-3 text-sm text-primary">
                 Effective monthly cost: <span className="font-bold">{formatCurrency(previewMonthly, currency)}</span>/month
+                {Number(paid) > 0 && (
+                  <span className="ml-1 text-primary/80">· {formatCurrency(previewRemaining, currency)} still to pay</span>
+                )}
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">

@@ -312,12 +312,14 @@ function AddLoanDialog({
   const [name, setName] = React.useState("");
   const [type, setType] = React.useState<keyof typeof LOAN_TYPE_META>("PERSONAL");
   const [principal, setPrincipal] = React.useState("");
+  const [paid, setPaid] = React.useState("");
   const [rate, setRate] = React.useState("10");
   const [tenure, setTenure] = React.useState("36");
   const [startDate, setStartDate] = React.useState(format(new Date(), "yyyy-MM-dd"));
 
   const emiPreview =
     Number(principal) > 0 ? calculateEmi(Number(principal), Number(rate), Number(tenure)) : 0;
+  const remainingPreview = Math.max(0, (Number(principal) || 0) - (Number(paid) || 0));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -327,6 +329,7 @@ function AddLoanDialog({
           name,
           type,
           principalAmount: Number(principal),
+          amountPaid: Number(paid) || 0,
           interestRate: Number(rate),
           tenureMonths: Number(tenure),
           startDate: new Date(startDate),
@@ -337,6 +340,7 @@ function AddLoanDialog({
           onOpenChange(false);
           setName("");
           setPrincipal("");
+          setPaid("");
         },
       },
     );
@@ -387,9 +391,17 @@ function AddLoanDialog({
               <Input id="l-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
             </div>
           </div>
+          <div>
+            <Label htmlFor="l-paid">Already paid (principal so far)</Label>
+            <Input id="l-paid" type="number" step="0.01" placeholder="0 — leave blank for a brand-new loan" value={paid} onChange={(e) => setPaid(e.target.value)} />
+            {fieldErrors.amountPaid && <p className="mt-1 text-xs text-destructive">{fieldErrors.amountPaid[0]}</p>}
+          </div>
           {emiPreview > 0 && (
             <div className="rounded-xl bg-primary/10 p-3 text-sm text-primary">
               Estimated EMI: <span className="font-bold">{formatCurrency(emiPreview, currency)}</span>/month
+              {Number(paid) > 0 && (
+                <span className="ml-1 text-primary/80">· {formatCurrency(remainingPreview, currency)} remaining</span>
+              )}
             </div>
           )}
           <DialogFooter>

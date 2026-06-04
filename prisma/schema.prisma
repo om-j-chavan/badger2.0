@@ -286,6 +286,7 @@ model DistributedExpense {
   category       Category   @relation(fields: [categoryId], references: [id])
   name           String
   totalAmount    Decimal    @db.Decimal(14, 2)
+  amountPaid     Decimal    @db.Decimal(14, 2) @default(0)
   coverageMonths Int
   startDate      DateTime
   importance     Importance @default(ESSENTIAL)
