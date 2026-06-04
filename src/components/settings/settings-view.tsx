@@ -16,6 +16,7 @@ import { IS_LOCAL_AUTH } from "@/lib/dev-auth";
 import { updateProfile } from "@/app/actions/profile";
 import { createCategory, deleteCategory } from "@/app/actions/category";
 import { changePasswordLocal } from "@/app/actions/auth-local";
+import { NotificationsSection } from "./notifications-section";
 
 interface Category {
   id: string;
@@ -27,14 +28,22 @@ interface Category {
 export function SettingsView({
   profile,
   categories,
+  notifications,
 }: {
   profile: { name: string | null; currency: string; timezone: string; monthlyIncome: number | null };
   categories: Category[];
+  notifications: {
+    vapidPublicKey: string;
+    emailReminders: boolean;
+    emailConfigured: boolean;
+    pushConfigured: boolean;
+  };
 }) {
   return (
     <Tabs defaultValue="profile">
       <TabsList>
         <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsTrigger value="notifications">Notifications</TabsTrigger>
         <TabsTrigger value="categories">Categories</TabsTrigger>
         <TabsTrigger value="data">Data</TabsTrigger>
       </TabsList>
@@ -43,6 +52,14 @@ export function SettingsView({
           <ProfileSection profile={profile} />
           {IS_LOCAL_AUTH && <ChangePasswordSection />}
         </div>
+      </TabsContent>
+      <TabsContent value="notifications">
+        <NotificationsSection
+          vapidPublicKey={notifications.vapidPublicKey}
+          emailReminders={notifications.emailReminders}
+          emailConfigured={notifications.emailConfigured}
+          pushConfigured={notifications.pushConfigured}
+        />
       </TabsContent>
       <TabsContent value="categories"><CategorySection categories={categories} /></TabsContent>
       <TabsContent value="data"><DataSection /></TabsContent>

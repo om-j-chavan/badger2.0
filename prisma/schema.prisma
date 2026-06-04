@@ -127,6 +127,7 @@ model User {
   timezone     String   @default("Asia/Kolkata")
   monthlyIncome Decimal? @db.Decimal(14, 2)
   onboardedAt  DateTime?
+  emailReminders Boolean @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -149,9 +150,38 @@ model User {
   auditLogs         AuditLog[]
   aiMessages        AiMessage[]
   sessions          Session[]
+  pushSubscriptions PushSubscription[]
+  reminderLogs      ReminderLog[]
 
   @@index([clerkId])
   @@index([email])
+}
+
+// Web Push subscription (one per browser/device the user opted in on).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// One row per user per day a reminder digest was sent (keeps the cron idempotent).
+model ReminderLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String // yyyy-MM-dd (UTC)
+  channels  String // e.g. "email,push"
+  itemCount Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId])
 }
 
 // Local-auth session (cookie-backed). Unused in Clerk mode.
