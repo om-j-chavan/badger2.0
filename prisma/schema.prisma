@@ -132,6 +132,8 @@ model User {
   updatedAt    DateTime @updatedAt
 
   accounts          Account[]
+  incomes           Income[]
+  transfers         Transfer[]
   categories        Category[]
   expenses          Expense[]
   recurringExpenses RecurringExpense[]
@@ -213,9 +215,57 @@ model Account {
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
-  expenses Expense[]
+  expenses      Expense[]
+  incomes       Income[]
+  transfersOut  Transfer[]  @relation("TransferFrom")
+  transfersIn   Transfer[]  @relation("TransferTo")
 
   @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Income (money in) — raises an account balance and feeds savings/review.
+// ---------------------------------------------------------------------------
+
+model Income {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountId String?
+  account   Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  amount    Decimal  @db.Decimal(14, 2)
+  source    String // e.g. Salary, Refund, Interest, Gift, Other
+  date      DateTime
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, date])
+  @@index([accountId])
+}
+
+// ---------------------------------------------------------------------------
+// Transfer (money between two accounts) — never counted as income or spending.
+// A credit-card bill payment is a transfer from a bank account to the card.
+// ---------------------------------------------------------------------------
+
+model Transfer {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromAccountId String
+  fromAccount   Account  @relation("TransferFrom", fields: [fromAccountId], references: [id])
+  toAccountId   String
+  toAccount     Account  @relation("TransferTo", fields: [toAccountId], references: [id])
+  amount        Decimal  @db.Decimal(14, 2)
+  date          DateTime
+  note          String?
+  isCardPayment Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([userId, date])
+  @@index([fromAccountId])
+  @@index([toAccountId])
 }
 
 // ---------------------------------------------------------------------------

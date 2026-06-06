@@ -31,6 +31,30 @@ export const accountSchema = z.object({
   icon: z.string().default("wallet"),
 });
 
+// --- Income -----------------------------------------------------------------
+export const incomeSchema = z.object({
+  accountId: z.string().cuid().optional().nullable(),
+  amount: money,
+  source: z.string().trim().min(1, "Where's it from?").max(60).default("Salary"),
+  date: isoDate,
+  note: z.string().trim().max(200).optional().nullable(),
+});
+
+// --- Transfer ---------------------------------------------------------------
+export const transferSchema = z
+  .object({
+    fromAccountId: z.string().cuid({ message: "Pick a source account" }),
+    toAccountId: z.string().cuid({ message: "Pick a destination account" }),
+    amount: money,
+    date: isoDate,
+    note: z.string().trim().max(200).optional().nullable(),
+    isCardPayment: z.boolean().default(false),
+  })
+  .refine((d) => d.fromAccountId !== d.toAccountId, {
+    message: "Choose two different accounts",
+    path: ["toAccountId"],
+  });
+
 // --- Categories -------------------------------------------------------------
 export const categorySchema = z.object({
   name: z.string().trim().min(1, "Give it a name").max(40),

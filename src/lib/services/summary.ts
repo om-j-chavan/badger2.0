@@ -9,7 +9,8 @@ import { getCommitmentSummary } from "./commitments";
 export interface MonthlySummary {
   year: number;
   month: number; // 1-12
-  monthlyIncome: number;
+  monthlyIncome: number; // income used for ratios (logged income, else baseline)
+  incomeThisMonth: number; // logged deposits this month
 
   actualSpending: number;
   effectiveSpending: number;
@@ -54,7 +55,7 @@ export async function getMonthlySummary(
 ): Promise<MonthlySummary> {
   const { start, end } = monthRange(year, month);
 
-  const [user, expenses, distributed, loans, budget, commitmentSummary, goalContribs] =
+  const [user, expenses, distributed, loans, budget, commitmentSummary, goalContribs, incomes] =
     await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { id: userId } }),
       prisma.expense.findMany({
@@ -71,9 +72,14 @@ export async function getMonthlySummary(
       prisma.goalContribution.findMany({
         where: { userId, date: { gte: start, lte: end } },
       }),
+      prisma.income.findMany({ where: { userId, date: { gte: start, lte: end } } }),
     ]);
 
-  const monthlyIncome = toNumber(user.monthlyIncome);
+  // Income this month from logged deposits; fall back to the user's configured
+  // baseline monthly income when nothing has been logged yet.
+  const baselineIncome = toNumber(user.monthlyIncome);
+  const incomeThisMonth = round2(incomes.reduce((s, i) => s + toNumber(i.amount), 0));
+  const monthlyIncome = incomeThisMonth > 0 ? incomeThisMonth : baselineIncome;
 
   // --- Actual spending + breakdowns ---
   const byImportance = EMPTY_IMPORTANCE();
@@ -152,6 +158,7 @@ export async function getMonthlySummary(
     year,
     month,
     monthlyIncome,
+    incomeThisMonth,
     actualSpending,
     effectiveSpending,
     byImportance,

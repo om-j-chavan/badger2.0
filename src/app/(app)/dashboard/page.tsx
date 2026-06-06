@@ -93,7 +93,7 @@ export default async function DashboardPage() {
         <StatCard
           label="Savings rate"
           value={`${summary.savingsRate}%`}
-          hint={`${fmt(summary.savings)} saved`}
+          hint={`${fmt(summary.savings)} saved${summary.incomeThisMonth > 0 ? ` · ${fmt(summary.incomeThisMonth)} income` : ""}`}
           icon={PiggyBank}
           accent="success"
         />
