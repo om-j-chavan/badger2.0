@@ -28,7 +28,7 @@ export default async function AssistantPage() {
           </Badge>
         }
       />
-      <AssistantChat initial={initial} />
+      <AssistantChat initial={initial} aiAvailable={hasAiProvider()} />
     </div>
   );
 }

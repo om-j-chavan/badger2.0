@@ -2,10 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Send, Sparkles, Check, X, ArrowRight, Bot, User } from "lucide-react";
+import { Send, Sparkles, Check, X, ArrowRight, Bot, User, Cpu, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { sendAssistantMessage, commitDraft } from "@/app/actions/ai";
@@ -29,12 +30,25 @@ const SUGGESTIONS = [
   "Where do I find the budget planner?",
 ];
 
-export function AssistantChat({ initial }: { initial: Msg[] }) {
+export function AssistantChat({ initial, aiAvailable }: { initial: Msg[]; aiAvailable: boolean }) {
   const { toast } = useToast();
   const [messages, setMessages] = React.useState<Msg[]>(initial);
   const [input, setInput] = React.useState("");
   const [pending, setPending] = React.useState(false);
+  const [useLlm, setUseLlm] = React.useState(aiAvailable);
   const endRef = React.useRef<HTMLDivElement>(null);
+
+  // Restore the saved preference (only meaningful when a key is configured).
+  React.useEffect(() => {
+    if (!aiAvailable) return;
+    const saved = window.localStorage.getItem("badger-use-llm");
+    if (saved != null) setUseLlm(saved === "1");
+  }, [aiAvailable]);
+
+  function toggleLlm(v: boolean) {
+    setUseLlm(v);
+    window.localStorage.setItem("badger-use-llm", v ? "1" : "0");
+  }
 
   React.useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,7 +62,7 @@ export function AssistantChat({ initial }: { initial: Msg[] }) {
     setMessages((prev) => [...prev, { role: "user", content: trimmed }]);
     setPending(true);
     try {
-      const res = await sendAssistantMessage(trimmed, history);
+      const res = await sendAssistantMessage(trimmed, history, useLlm);
       if (res.ok) {
         const r: AssistantResponse = res.data;
         setMessages((prev) => [
@@ -169,6 +183,18 @@ export function AssistantChat({ initial }: { initial: Msg[] }) {
         )}
         <div ref={endRef} />
       </div>
+
+      {aiAvailable && (
+        <div className="flex items-center justify-end gap-2 pb-2 text-xs text-muted-foreground">
+          <span className={cn("flex items-center gap-1", !useLlm && "font-medium text-foreground")}>
+            <Cpu className="h-3.5 w-3.5" /> Local
+          </span>
+          <Switch checked={useLlm} onCheckedChange={toggleLlm} aria-label="Use GPT for answers" />
+          <span className={cn("flex items-center gap-1", useLlm && "font-medium text-primary")}>
+            <Zap className="h-3.5 w-3.5" /> GPT
+          </span>
+        </div>
+      )}
 
       <form
         onSubmit={(e) => {

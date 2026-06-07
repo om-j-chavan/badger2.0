@@ -59,6 +59,7 @@ export async function askAssistant(
   userId: string,
   message: string,
   history: ChatMessage[] = [],
+  options: { preferLocal?: boolean } = {},
 ): Promise<AssistantResponse> {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
   const currency = user.currency;
@@ -100,7 +101,8 @@ export async function askAssistant(
 
   // 4. Financial Q&A -----------------------------------------------------
   const context = await buildContext(userId, currency);
-  const provider = getProvider();
+  // Honour the user's per-chat choice: skip the LLM when they prefer local.
+  const provider = options.preferLocal ? null : getProvider();
 
   if (provider) {
     const pageList = PAGE_REGISTRY.map((p) => `- ${p.title} (${p.route}): ${p.description}`).join("\n");

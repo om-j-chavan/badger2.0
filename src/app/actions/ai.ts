@@ -61,13 +61,14 @@ async function resolveAccountId(
 export async function sendAssistantMessage(
   message: string,
   history: ChatMessage[] = [],
+  useLlm = true,
 ): Promise<ActionResult<AssistantResponse>> {
   return runAction(async () => {
     const userId = await requireUserId();
     if (!message.trim()) throw new Error("Type a message first.");
 
     await prisma.aiMessage.create({ data: { userId, role: "user", content: message } });
-    const response = await askAssistant(userId, message, history);
+    const response = await askAssistant(userId, message, history, { preferLocal: !useLlm });
     await prisma.aiMessage.create({
       data: {
         userId,
