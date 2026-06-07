@@ -25,6 +25,39 @@ async function resolveCategoryId(userId: string, name: string): Promise<string> 
   return created.id;
 }
 
+const HINT_TO_TYPE: Record<string, string> = {
+  credit_card: "CREDIT_CARD",
+  cash: "CASH",
+  upi: "UPI",
+  bank: "BANK",
+  savings: "SAVINGS",
+};
+
+/**
+ * Resolve a parsed account hint ("credit_card", "cash"…) to one of the user's
+ * accounts. Matches by type first (so "credit card" picks their only card),
+ * then falls back to a name mentioned in the original text.
+ */
+async function resolveAccountId(
+  userId: string,
+  hint: string | null | undefined,
+  rawText: string | null | undefined,
+): Promise<string | null> {
+  const accounts = await prisma.account.findMany({ where: { userId, isArchived: false } });
+  if (accounts.length === 0) return null;
+
+  if (hint && HINT_TO_TYPE[hint]) {
+    const byType = accounts.filter((a) => a.type === HINT_TO_TYPE[hint]);
+    if (byType.length > 0) return byType[0].id;
+  }
+  if (rawText) {
+    const lower = rawText.toLowerCase();
+    const byName = accounts.find((a) => a.name && lower.includes(a.name.toLowerCase()));
+    if (byName) return byName.id;
+  }
+  return null;
+}
+
 export async function sendAssistantMessage(
   message: string,
   history: ChatMessage[] = [],
@@ -59,12 +92,19 @@ export async function commitDraft(draft: DraftAction): Promise<ActionResult<{ ok
     switch (draft.kind) {
       case "create_expense": {
         const categoryId = await resolveCategoryId(userId, String(p.categoryName ?? "Miscellaneous"));
+        const accountId = await resolveAccountId(
+          userId,
+          p.accountHint as string | null,
+          p.rawText as string | null,
+        );
         const res = await createExpense({
           categoryId,
+          accountId,
           amount: Number(p.amount),
           importance: p.importance ?? "USEFUL",
           date: p.date ? new Date(String(p.date)) : new Date(),
           note: p.note ?? null,
+          mood: (p.mood as string | null) ?? null,
         });
         if (!res.ok) throw new Error(res.error);
         break;
