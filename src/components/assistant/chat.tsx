@@ -184,17 +184,23 @@ export function AssistantChat({ initial, aiAvailable }: { initial: Msg[]; aiAvai
         <div ref={endRef} />
       </div>
 
-      {aiAvailable && (
-        <div className="flex items-center justify-end gap-2 pb-2 text-xs text-muted-foreground">
-          <span className={cn("flex items-center gap-1", !useLlm && "font-medium text-foreground")}>
-            <Cpu className="h-3.5 w-3.5" /> Local
-          </span>
-          <Switch checked={useLlm} onCheckedChange={toggleLlm} aria-label="Use GPT for answers" />
-          <span className={cn("flex items-center gap-1", useLlm && "font-medium text-primary")}>
-            <Zap className="h-3.5 w-3.5" /> GPT
-          </span>
-        </div>
-      )}
+      <div className="flex items-center justify-end gap-2 pb-2 text-xs text-muted-foreground">
+        {!aiAvailable && (
+          <span className="mr-1 italic">Add an OpenAI key to enable GPT ·</span>
+        )}
+        <span className={cn("flex items-center gap-1", (!useLlm || !aiAvailable) && "font-medium text-foreground")}>
+          <Cpu className="h-3.5 w-3.5" /> Local
+        </span>
+        <Switch
+          checked={useLlm && aiAvailable}
+          onCheckedChange={toggleLlm}
+          disabled={!aiAvailable}
+          aria-label="Use GPT for answers"
+        />
+        <span className={cn("flex items-center gap-1", useLlm && aiAvailable && "font-medium text-primary")}>
+          <Zap className="h-3.5 w-3.5" /> GPT
+        </span>
+      </div>
 
       <form
         onSubmit={(e) => {
