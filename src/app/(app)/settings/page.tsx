@@ -18,6 +18,7 @@ export default async function SettingsPage() {
       <SettingsView
         profile={{
           name: user.name,
+          email: user.email,
           currency: user.currency,
           timezone: user.timezone,
           monthlyIncome: user.monthlyIncome ? toNumber(user.monthlyIncome) : null,

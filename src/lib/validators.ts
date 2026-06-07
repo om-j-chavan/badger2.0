@@ -208,6 +208,7 @@ export const goalContributionSchema = z.object({
 // --- Profile ----------------------------------------------------------------
 export const profileSchema = z.object({
   name: z.string().trim().max(80).optional().nullable(),
+  email: z.string().trim().email("Enter a valid email").optional(),
   currency: z.string().length(3).optional(),
   timezone: z.string().max(60).optional(),
   monthlyIncome: optionalMoney.optional().nullable(),

@@ -30,7 +30,7 @@ export function SettingsView({
   categories,
   notifications,
 }: {
-  profile: { name: string | null; currency: string; timezone: string; monthlyIncome: number | null };
+  profile: { name: string | null; email: string; currency: string; timezone: string; monthlyIncome: number | null };
   categories: Category[];
   notifications: {
     vapidPublicKey: string;
@@ -67,9 +67,10 @@ export function SettingsView({
   );
 }
 
-function ProfileSection({ profile }: { profile: { name: string | null; currency: string; timezone: string; monthlyIncome: number | null } }) {
-  const { run, pending } = useAction();
+function ProfileSection({ profile }: { profile: { name: string | null; email: string; currency: string; timezone: string; monthlyIncome: number | null } }) {
+  const { run, pending, fieldErrors } = useAction();
   const [name, setName] = React.useState(profile.name ?? "");
+  const [email, setEmail] = React.useState(profile.email ?? "");
   const [currency, setCurrency] = React.useState(profile.currency);
   const [income, setIncome] = React.useState(profile.monthlyIncome ? String(profile.monthlyIncome) : "");
   const [timezone, setTimezone] = React.useState(profile.timezone);
@@ -77,7 +78,7 @@ function ProfileSection({ profile }: { profile: { name: string | null; currency:
   async function save(e: React.FormEvent) {
     e.preventDefault();
     await run(
-      () => updateProfile({ name, currency, timezone, monthlyIncome: income ? Number(income) : null }),
+      () => updateProfile({ name, email, currency, timezone, monthlyIncome: income ? Number(income) : null }),
       { successMessage: "Profile saved" },
     );
   }
@@ -91,6 +92,11 @@ function ProfileSection({ profile }: { profile: { name: string | null; currency:
             <div>
               <Label htmlFor="name">Name</Label>
               <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" required />
+              {fieldErrors.email && <p className="mt-1 text-xs text-destructive">{fieldErrors.email[0]}</p>}
             </div>
             <div>
               <Label>Currency</Label>

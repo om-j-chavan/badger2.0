@@ -1,4 +1,4 @@
-import { addDays, format } from "date-fns";
+import { addDays, differenceInCalendarDays, format } from "date-fns";
 import { prisma } from "../prisma";
 import { toNumber } from "../utils";
 import { formatCurrency } from "../currency";
@@ -7,7 +7,7 @@ import { sendPushToUser } from "../notify/push";
 import { hasEmail, hasPush, env } from "../env";
 
 export interface ReminderItem {
-  type: "subscription" | "insurance" | "loan";
+  type: "subscription" | "insurance" | "loan" | "membership";
   name: string;
   amount: number;
   dueDate: string;
@@ -18,53 +18,96 @@ const TYPE_LABEL: Record<ReminderItem["type"], string> = {
   subscription: "Subscription",
   insurance: "Insurance",
   loan: "Loan EMI",
+  membership: "Membership",
 };
 
 /**
- * Items due soon for a user:
- *  - subscriptions: within their own remindDaysBefore window
- *  - insurance: within 7 days
- *  - loan EMIs: within 3 days
+ * Days-before a payment that trigger a reminder: 5 days ahead, and on the day.
+ */
+export const REMINDER_OFFSETS = [5, 0];
+
+/**
+ * Payments that hit a reminder offset (T-5 or due-day) for a user, across
+ * loan EMIs, subscriptions, insurance and memberships. Uses calendar-day
+ * difference so the time-of-day a record was created doesn't matter.
  */
 export async function getUpcomingReminders(userId: string, now = new Date()): Promise<ReminderItem[]> {
-  const dayMs = 86_400_000;
-  const lowerBound = addDays(now, -1); // include just-passed (today) due dates
+  // Pull anything due within the next ~6 days, then keep only T-5 and T-0.
+  const lo = addDays(now, -1);
+  const hi = addDays(now, 6);
 
-  const [subs, insurances, loans] = await Promise.all([
-    prisma.subscription.findMany({
-      where: { userId, isActive: true, renewalDate: { gte: lowerBound, lte: addDays(now, 60) } },
-    }),
-    prisma.insurance.findMany({
-      where: { userId, isActive: true, renewalDate: { gte: lowerBound, lte: addDays(now, 7) } },
-    }),
-    prisma.loan.findMany({
-      where: { userId, status: "ACTIVE", nextDueDate: { gte: lowerBound, lte: addDays(now, 3) } },
-    }),
+  const [subs, insurances, loans, memberships] = await Promise.all([
+    prisma.subscription.findMany({ where: { userId, isActive: true, renewalDate: { gte: lo, lte: hi } } }),
+    prisma.insurance.findMany({ where: { userId, isActive: true, renewalDate: { gte: lo, lte: hi } } }),
+    prisma.loan.findMany({ where: { userId, status: "ACTIVE", nextDueDate: { gte: lo, lte: hi } } }),
+    prisma.membership.findMany({ where: { userId, isActive: true, renewalDate: { gte: lo, lte: hi } } }),
   ]);
 
   const items: ReminderItem[] = [];
-  const daysUntil = (d: Date) => Math.ceil((d.getTime() - now.getTime()) / dayMs);
-
-  for (const s of subs) {
-    const d = daysUntil(s.renewalDate);
-    if (d <= s.remindDaysBefore) {
-      items.push({ type: "subscription", name: s.name, amount: toNumber(s.cost), dueDate: s.renewalDate.toISOString(), daysUntil: d });
+  const push = (type: ReminderItem["type"], name: string, amount: number, due: Date) => {
+    const daysUntil = differenceInCalendarDays(due, now);
+    if (REMINDER_OFFSETS.includes(daysUntil)) {
+      items.push({ type, name, amount, dueDate: due.toISOString(), daysUntil });
     }
-  }
-  for (const i of insurances) {
-    items.push({ type: "insurance", name: i.name, amount: toNumber(i.premium), dueDate: i.renewalDate.toISOString(), daysUntil: daysUntil(i.renewalDate) });
-  }
-  for (const l of loans) {
-    items.push({ type: "loan", name: l.name, amount: toNumber(l.emiAmount), dueDate: l.nextDueDate.toISOString(), daysUntil: daysUntil(l.nextDueDate) });
-  }
+  };
 
-  return items.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+  for (const s of subs) push("subscription", s.name, toNumber(s.cost), s.renewalDate);
+  for (const i of insurances) push("insurance", i.name, toNumber(i.premium), i.renewalDate);
+  for (const l of loans) push("loan", l.name, toNumber(l.emiAmount), l.nextDueDate);
+  for (const m of memberships) push("membership", m.name, toNumber(m.cost), m.renewalDate);
+
+  return items.sort((a, b) => a.daysUntil - b.daysUntil);
 }
 
 function whenLabel(daysUntil: number): string {
   if (daysUntil <= 0) return "today";
   if (daysUntil === 1) return "tomorrow";
   return `in ${daysUntil} days`;
+}
+
+/**
+ * Build an iCalendar (.ics) file with an all-day event per upcoming payment,
+ * each with a reminder alarm. Attaching this to the email lets the user add
+ * the payments to Google/Apple/Outlook calendar in one tap.
+ */
+function buildReminderIcs(items: ReminderItem[], currency: string): string {
+  const stamp = format(new Date(), "yyyyMMdd'T'HHmmss'Z'");
+  const esc = (s: string) => s.replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
+
+  const events = items
+    .map((i) => {
+      const due = new Date(i.dueDate);
+      const start = format(due, "yyyyMMdd");
+      const end = format(addDays(due, 1), "yyyyMMdd");
+      const uid = `${i.type}-${i.name}-${start}`.replace(/[^a-zA-Z0-9-]/g, "") + "@badger";
+      const title = `Pay ${i.name} (${formatCurrency(i.amount, currency)})`;
+      return [
+        "BEGIN:VEVENT",
+        `UID:${uid}`,
+        `DTSTAMP:${stamp}`,
+        `DTSTART;VALUE=DATE:${start}`,
+        `DTEND;VALUE=DATE:${end}`,
+        `SUMMARY:${esc(title)}`,
+        `DESCRIPTION:${esc(`${TYPE_LABEL[i.type]} payment due. Logged in Badger.`)}`,
+        "BEGIN:VALARM",
+        "TRIGGER:-P1D",
+        "ACTION:DISPLAY",
+        "DESCRIPTION:Payment reminder",
+        "END:VALARM",
+        "END:VEVENT",
+      ].join("\r\n");
+    })
+    .join("\r\n");
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Badger//Reminders//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    events,
+    "END:VCALENDAR",
+  ].join("\r\n");
 }
 
 export interface DigestResult {
@@ -117,11 +160,15 @@ export async function runDailyReminders(now = new Date()): Promise<DigestResult>
         `<table style="width:100%;border-collapse:collapse">${rows}</table>`,
         `${env.app.url}/commitments`,
       );
+      const ics = buildReminderIcs(items, user.currency);
       const ok = await sendEmail({
         to: user.email,
         toName: user.name,
         subject: `Badger: ${items.length} payment${items.length === 1 ? "" : "s"} coming up`,
         html,
+        attachments: [
+          { name: "badger-reminders.ics", content: Buffer.from(ics, "utf8").toString("base64") },
+        ],
       });
       if (ok) {
         result.emails += 1;

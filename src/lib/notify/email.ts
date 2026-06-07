@@ -1,11 +1,18 @@
 import { env, hasEmail } from "../env";
 
+export interface EmailAttachment {
+  name: string;
+  /** Base64-encoded file content. */
+  content: string;
+}
+
 export interface EmailMessage {
   to: string;
   toName?: string | null;
   subject: string;
   html: string;
   text?: string;
+  attachments?: EmailAttachment[];
 }
 
 /**
@@ -29,6 +36,9 @@ export async function sendEmail(msg: EmailMessage): Promise<boolean> {
         subject: msg.subject,
         htmlContent: msg.html,
         textContent: msg.text ?? stripHtml(msg.html),
+        attachment: msg.attachments?.length
+          ? msg.attachments.map((a) => ({ name: a.name, content: a.content }))
+          : undefined,
       }),
     });
     if (!res.ok) {
