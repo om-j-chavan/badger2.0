@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS, NAV_GROUPS, ASSISTANT_NAV } from "./nav-config";
+import { BadgerLogo } from "@/components/shared/badger-logo";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -11,7 +12,7 @@ export function Sidebar() {
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r bg-card/50 lg:flex">
       <div className="flex h-16 items-center gap-2 px-6 text-lg font-bold">
-        <span className="text-2xl">🦡</span> Badger
+        <BadgerLogo className="h-8 w-8" /> Badger
       </div>
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-4 no-scrollbar">
         {NAV_GROUPS.map((group) => {

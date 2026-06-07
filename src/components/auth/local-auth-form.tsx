@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { BadgerLogo } from "@/components/shared/badger-logo";
 import { useAction } from "@/hooks/use-action";
 import { signInLocal, signUpLocal } from "@/app/actions/auth-local";
 
@@ -42,8 +43,8 @@ export function LocalAuthForm({ mode }: { mode: "signin" | "signup" }) {
   return (
     <Card className="w-full max-w-md">
       <CardContent className="p-6">
-        <div className="mb-6 text-center">
-          <span className="text-5xl">🦡</span>
+        <div className="mb-6 flex flex-col items-center text-center">
+          <BadgerLogo className="h-14 w-14" />
           <h1 className="mt-3 text-2xl font-bold">
             {isSignUp ? "Create your Badger account" : "Welcome back"}
           </h1>

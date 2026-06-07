@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAction } from "@/hooks/use-action";
 import { CURRENCIES } from "@/lib/constants";
 import { completeOnboarding } from "@/app/actions/profile";
+import { BadgerLogo } from "@/components/shared/badger-logo";
 
 export function OnboardingForm({ defaultName, defaultCurrency }: { defaultName: string; defaultCurrency: string }) {
   const { run, pending } = useAction();
@@ -30,8 +31,8 @@ export function OnboardingForm({ defaultName, defaultCurrency }: { defaultName: 
   return (
     <Card className="w-full max-w-md">
       <CardContent className="p-6">
-        <div className="mb-6 text-center">
-          <span className="text-5xl">🦡</span>
+        <div className="mb-6 flex flex-col items-center text-center">
+          <BadgerLogo className="h-14 w-14" />
           <h1 className="mt-3 text-2xl font-bold">Welcome to Badger!</h1>
           <p className="mt-1 text-sm text-muted-foreground">A couple of quick things and you're in.</p>
         </div>

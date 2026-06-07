@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { IS_LOCAL_AUTH } from "@/lib/dev-auth";
 import { getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { BadgerLogo } from "@/components/shared/badger-logo";
 import {
   Sparkles,
   Wallet,
@@ -36,7 +37,7 @@ export default async function LandingPage() {
     <main className="min-h-screen bg-gradient-to-b from-background via-background to-accent/40">
       <header className="container flex items-center justify-between py-6">
         <div className="flex items-center gap-2 text-lg font-bold">
-          <span className="text-2xl">🦡</span> Badger
+          <BadgerLogo className="h-8 w-8" /> Badger
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" asChild>

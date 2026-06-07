@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IS_LOCAL_AUTH } from "@/lib/dev-auth";
 import { signOutLocal } from "@/app/actions/auth-local";
+import { BadgerLogo } from "@/components/shared/badger-logo";
 
 export function Topbar({ displayName }: { displayName?: string }) {
   const { theme, setTheme } = useTheme();
@@ -22,7 +23,7 @@ export function Topbar({ displayName }: { displayName?: string }) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b bg-background/90 px-4 backdrop-blur lg:px-6">
       <div className="flex items-center gap-2 lg:hidden">
-        <span className="text-xl">🦡</span>
+        <BadgerLogo className="h-7 w-7" />
         <span className="font-bold">Badger</span>
       </div>
 
