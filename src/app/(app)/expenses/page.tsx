@@ -3,11 +3,10 @@ import { Receipt } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { toNumber } from "@/lib/utils";
-import { formatCurrency } from "@/lib/currency";
-import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { AddExpenseButton } from "@/components/expenses/expense-form";
+import { ExpensesHeader } from "@/components/expenses/expenses-header";
 import { ExpenseList, type ExpenseRow } from "@/components/expenses/expense-list";
 
 const PAGE_SIZE = 50;
@@ -36,6 +35,13 @@ export default async function ExpensesPage({
 
   const categoryProps = categories.map((c) => ({ id: c.id, name: c.name, color: c.color }));
   const accountProps = accounts.map((a) => ({ id: a.id, name: a.name }));
+  const balanceAccounts = accounts.map((a) => ({
+    id: a.id,
+    name: a.name,
+    type: a.type,
+    currentBalance: toNumber(a.currentBalance),
+    color: a.color,
+  }));
   const totalSpent = expenses.reduce((s, e) => s + toNumber(e.amount), 0);
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -56,10 +62,12 @@ export default async function ExpensesPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Expenses"
-        description={`${total} logged · ${formatCurrency(totalSpent, user.currency)} on this page`}
-        action={<AddExpenseButton categories={categoryProps} accounts={accountProps} />}
+      <ExpensesHeader
+        count={total}
+        totalSpent={totalSpent}
+        currency={user.currency}
+        categories={categoryProps}
+        accounts={balanceAccounts}
       />
 
       {rows.length === 0 ? (
