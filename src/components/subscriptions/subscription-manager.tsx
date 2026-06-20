@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { format } from "date-fns";
-import { CreditCard, Trash2, Plus } from "lucide-react";
+import { CreditCard, Trash2, Plus, Receipt } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ import {
   createSubscription,
   deleteSubscription,
   toggleSubscription,
+  logSubscriptionAsExpense,
 } from "@/app/actions/subscription";
 
 interface Sub {
@@ -138,6 +139,19 @@ export function SubscriptionManager({
                   </div>
                   <Switch checked={s.isActive} onCheckedChange={(v) => run(() => toggleSubscription(s.id, v))} />
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 w-full"
+                  disabled={pending}
+                  onClick={() =>
+                    run(() => logSubscriptionAsExpense(s.id), {
+                      successMessage: `Logged ${formatCurrency(s.cost, currency)} for ${s.name}`,
+                    })
+                  }
+                >
+                  <Receipt className="h-4 w-4" /> Log as expense
+                </Button>
               </CardContent>
             </Card>
           ))}

@@ -8,6 +8,8 @@ import { audit } from "@/lib/audit";
 import { runAction, type ActionResult } from "@/lib/action-result";
 import { subscriptionSchema } from "@/lib/validators";
 import { awardXp } from "@/lib/services/gamification";
+import { createExpense } from "@/app/actions/expense";
+import { toNumber } from "@/lib/utils";
 
 function revalidateSubs() {
   ["/subscriptions", "/commitments", "/dashboard"].forEach((p) => revalidatePath(p));
@@ -67,6 +69,42 @@ export async function toggleSubscription(
     await prisma.subscription.update({ where: { id }, data: { isActive } });
     revalidateSubs();
     return { id };
+  });
+}
+
+/**
+ * Log this subscription as an expense for today, pulling amount and name from
+ * the subscription. Uses the subscription's own category if set, otherwise the
+ * user's default category. Delegates to createExpense so account balances and
+ * gamification stay consistent.
+ */
+export async function logSubscriptionAsExpense(
+  id: string,
+): Promise<ActionResult<{ id: string }>> {
+  const resolved = await runAction(async () => {
+    const userId = await requireUserId();
+    await requireOwnership("subscription", id, userId);
+    const sub = await prisma.subscription.findUniqueOrThrow({ where: { id } });
+
+    let categoryId = sub.categoryId;
+    if (!categoryId) {
+      const fallback =
+        (await prisma.category.findFirst({ where: { userId, isDefault: true } })) ??
+        (await prisma.category.findFirst({ where: { userId } }));
+      if (!fallback) {
+        throw new Error("Add a category first so the expense can be filed.");
+      }
+      categoryId = fallback.id;
+    }
+    return { categoryId, amount: toNumber(sub.cost), note: sub.name };
+  });
+  if (!resolved.ok) return resolved;
+
+  return createExpense({
+    categoryId: resolved.data.categoryId,
+    amount: resolved.data.amount,
+    date: new Date(),
+    note: resolved.data.note,
   });
 }
 
