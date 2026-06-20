@@ -7,10 +7,14 @@ import { AccountManager, type Activity } from "@/components/accounts/account-man
 export default async function AccountsPage() {
   const user = await requireUser();
 
-  const [accounts, incomes, transfers] = await Promise.all([
+  const [accounts, archivedAccounts, incomes, transfers] = await Promise.all([
     prisma.account.findMany({
       where: { userId: user.id, isArchived: false },
       orderBy: { createdAt: "asc" },
+    }),
+    prisma.account.findMany({
+      where: { userId: user.id, isArchived: true },
+      orderBy: { name: "asc" },
     }),
     prisma.income.findMany({
       where: { userId: user.id },
@@ -57,6 +61,13 @@ export default async function AccountsPage() {
       />
       <AccountManager
         accounts={accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type,
+          currentBalance: toNumber(a.currentBalance),
+          color: a.color,
+        }))}
+        archived={archivedAccounts.map((a) => ({
           id: a.id,
           name: a.name,
           type: a.type,

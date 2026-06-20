@@ -7,6 +7,7 @@ import {
   Wallet,
   Plus,
   Archive,
+  ArchiveRestore,
   ArrowDownToLine,
   ArrowLeftRight,
   CreditCard,
@@ -22,7 +23,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { useAction } from "@/hooks/use-action";
 import { formatCurrency } from "@/lib/currency";
 import { ACCOUNT_TYPE_META } from "@/lib/constants";
-import { createAccount, archiveAccount } from "@/app/actions/account";
+import { createAccount, archiveAccount, unarchiveAccount } from "@/app/actions/account";
 import { createIncome, deleteIncome } from "@/app/actions/income";
 import { createTransfer, deleteTransfer } from "@/app/actions/transfer";
 
@@ -52,10 +53,12 @@ const today = () => format(new Date(), "yyyy-MM-dd");
 
 export function AccountManager({
   accounts,
+  archived = [],
   recent,
   currency,
 }: {
   accounts: Acct[];
+  archived?: Acct[];
   recent: Activity[];
   currency: string;
 }) {
@@ -184,6 +187,40 @@ export function AccountManager({
                   </div>
                 </div>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Archived accounts */}
+      {archived.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <p className="mb-2 text-sm font-semibold text-muted-foreground">Archived accounts</p>
+            <div className="divide-y">
+              {archived.map((a) => {
+                const isCard = a.type === "CREDIT_CARD";
+                return (
+                  <div key={a.id} className="flex items-center justify-between py-2.5 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ backgroundColor: `${a.color}22`, color: a.color }}>
+                        {isCard ? <CreditCard className="h-3.5 w-3.5" /> : <Wallet className="h-3.5 w-3.5" />}
+                      </span>
+                      <div>
+                        <p className="font-medium">{a.name}</p>
+                        <p className="text-xs text-muted-foreground">{ACCOUNT_TYPE_META[a.type].label} · {fmt(a.currentBalance)}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => run(() => unarchiveAccount(a.id), { successMessage: "Unarchived" })}
+                    >
+                      <ArchiveRestore className="h-4 w-4" /> Unarchive
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

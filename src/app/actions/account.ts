@@ -45,6 +45,19 @@ export async function archiveAccount(id: string): Promise<ActionResult<{ id: str
     await prisma.account.update({ where: { id }, data: { isArchived: true } });
     await audit(userId, "account.archive", "Account", id);
     revalidatePath("/accounts");
+    revalidatePath("/dashboard");
+    return { id };
+  });
+}
+
+export async function unarchiveAccount(id: string): Promise<ActionResult<{ id: string }>> {
+  return runAction(async () => {
+    const userId = await requireUserId();
+    await requireOwnership("account", id, userId);
+    await prisma.account.update({ where: { id }, data: { isArchived: false } });
+    await audit(userId, "account.unarchive", "Account", id);
+    revalidatePath("/accounts");
+    revalidatePath("/dashboard");
     return { id };
   });
 }
