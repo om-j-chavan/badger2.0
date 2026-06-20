@@ -128,7 +128,6 @@ function ProfileSection({ profile }: { profile: { name: string | null; email: st
 function ChangePasswordSection() {
   const { run, pending, fieldErrors } = useAction();
   const { toast } = useToast();
-  const [current, setCurrent] = React.useState("");
   const [next, setNext] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
 
@@ -138,11 +137,10 @@ function ChangePasswordSection() {
       toast({ title: "New passwords don't match", variant: "error" });
       return;
     }
-    const res = await run(() => changePasswordLocal({ currentPassword: current, newPassword: next }), {
+    const res = await run(() => changePasswordLocal({ newPassword: next }), {
       successMessage: "Password updated",
     });
     if (res.ok) {
-      setCurrent("");
       setNext("");
       setConfirm("");
     }
@@ -153,11 +151,6 @@ function ChangePasswordSection() {
       <CardHeader><CardTitle>Change password</CardTitle></CardHeader>
       <CardContent>
         <form onSubmit={save} className="space-y-4">
-          <div className="max-w-sm">
-            <Label htmlFor="cur-pw">Current password</Label>
-            <Input id="cur-pw" type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
-            {fieldErrors.currentPassword && <p className="mt-1 text-xs text-destructive">{fieldErrors.currentPassword[0]}</p>}
-          </div>
           <div className="grid max-w-md gap-4 sm:grid-cols-2">
             <div>
               <Label htmlFor="new-pw">New password</Label>

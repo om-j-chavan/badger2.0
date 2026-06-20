@@ -35,7 +35,6 @@ const signInSchema = z.object({
 });
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, "Enter your current password"),
   newPassword: z.string().min(8, "At least 8 characters").max(200),
 });
 
@@ -98,9 +97,9 @@ export async function signOutLocal(): Promise<void> {
 }
 
 /**
- * Change the signed-in user's password (local auth only). Verifies the current
- * password, stores a new hash, and revokes all *other* sessions so any other
- * devices are logged out — while keeping the current session alive.
+ * Change the signed-in user's password (local auth only). Stores a new hash and
+ * revokes all *other* sessions so any other devices are logged out — while
+ * keeping the current session alive.
  */
 export async function changePasswordLocal(input: unknown): Promise<ActionResult<{ ok: true }>> {
   return runAction(async () => {
@@ -111,8 +110,6 @@ export async function changePasswordLocal(input: unknown): Promise<ActionResult<
     if (!user.passwordHash) {
       throw new Error("Password changes aren't available for this account.");
     }
-    const valid = await verifyPassword(data.currentPassword, user.passwordHash);
-    if (!valid) throw new Error("Your current password is incorrect.");
     if (await verifyPassword(data.newPassword, user.passwordHash)) {
       throw new Error("Your new password must be different from the current one.");
     }
